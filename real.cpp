@@ -80,22 +80,13 @@ void getIMU(float dt){
 }
 
 void dogtall(float dt, float current_pos_hips[4], float current_pos_knee[4]  ){
-    const float maxChange = 60 * dt;
     for (int i = 0; i < 4; i++) {
         float hipDifference = -current_pos_hips[i];
         float kneeDifference = -30 - current_pos_knee[i];
 
-        if (fabs(hipDifference) > maxChange) {
-            current_pos_hips[i] += (hipDifference > 0 ? maxChange : -maxChange);
-        } else {
-            current_pos_hips[i] = 0;
-        }
+        current_pos_hips[i] =0;
 
-        if (fabs(kneeDifference) > maxChange) {
-            current_pos_knee[i] += (kneeDifference > 0 ? maxChange : -maxChange);
-        } else {
-            current_pos_knee[i] = -30;
-        }
+        current_pos_knee[i] =0;
 
         setLeg(i, current_pos_hips[i], current_pos_knee[i]);
     }

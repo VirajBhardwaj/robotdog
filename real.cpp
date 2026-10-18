@@ -15,6 +15,7 @@ GAIT_SPEED = 3;
 
 
 
+
 const int numServos = 8;
 Servo myServos[numServos];
 
@@ -35,7 +36,6 @@ void setLeg(int idx, float armOffset, float elbowOffset){
     //set servo to that posootion 
 
 
-    unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
@@ -80,24 +80,47 @@ void getIMU(float dt){
 }
 
 void dogtall(float dt, float current_pos_hips[4], float current_pos_knee[4]  ){
-    //set the legs to a tall position
-
-
-
+    const float maxChange = 60 * dt;
     for (int i = 0; i < 4; i++) {
-        for(int j = current_pos ; j >-30, ){
-        setLeg(i, 0, j); 
+        float hipDifference = -current_pos_hips[i];
+        float kneeDifference = -30 - current_pos_knee[i];
+
+        if (fabs(hipDifference) > maxChange) {
+            current_pos_hips[i] += (hipDifference > 0 ? maxChange : -maxChange);
+        } else {
+            current_pos_hips[i] = 0;
+        }
+
+        if (fabs(kneeDifference) > maxChange) {
+            current_pos_knee[i] += (kneeDifference > 0 ? maxChange : -maxChange);
+        } else {
+            current_pos_knee[i] = -30;
+        }
+
+        setLeg(i, current_pos_hips[i], current_pos_knee[i]);
     }
-  }   
 }
 
 void dogcrouch(float dt, float current_pos_hips[4], float current_pos_knee[4] ){
-    //set the legs to a crouch position
+    const float maxChange = 60.0f * dt;
     for (int i = 0; i < 4; i++) {
-        for(int j = current_pos ; j >-30, ){
-        setLeg(i, 0, j); 
+        float hipDifference = -current_pos_hips[i];
+        float kneeDifference = 35.0f - current_pos_knee[i];
+
+        if (fabs(hipDifference) > maxChange) {
+            current_pos_hips[i] += (hipDifference > 0 ? maxChange : -maxChange);
+        } else {
+            current_pos_hips[i] = 0.0f;
+        }
+
+        if (fabs(kneeDifference) > maxChange) {
+            current_pos_knee[i] += (kneeDifference > 0 ? maxChange : -maxChange);
+        } else {
+            current_pos_knee[i] = 35.0f;
+        }
+
+        setLeg(i, current_pos_hips[i], current_pos_knee[i]);
     }
-  }
 }
 
 
@@ -117,7 +140,7 @@ void dogwalk(float dt){
         hips[i] = sin(legphase[i]) * STEP_SWING;
 
         if (cos(legPhase[i]) > 0) {
-            knees[i] = -(cos(legPhase[i]) * STEP_LIFT); 
+            knees[i] = -(cos(legphase[i]) * STEP_LIFT); 
             // if leg in swing phase , we lift the knee so it doenst hit grnd
         } else {
             //gorundtouching phase
@@ -178,12 +201,12 @@ void loop(){
 
         if (mode == 'w') {
             dogwalk(dt, 2); 
-        } else if (mode == 't') {
-            dogcrouch(dt,hips,knees);
         } else if (mode == 'c') {
+            dogcrouch(dt,hips,knees);
+        } else if (mode == 't') {
             dogtall(dt,hips,knees);
         } else {
-            for(int i; i<4; i++){
+            for(int i= 0; i<4; i++){
                 setLeg(i,90,45);
             }
         }

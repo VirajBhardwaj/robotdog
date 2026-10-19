@@ -14,8 +14,6 @@ const int GAIT_SPEED,STEP_SWING,STEP_LIFT;
 GAIT_SPEED = 3;
 
 
-
-
 const int numServos = 8;
 Servo myServos[numServos];
 
@@ -27,26 +25,21 @@ const long interval = 20; // 50Hz update loop (every 20ms)
 
 char mode = 's'; // 'w' = walk, 's' = stop, 't' = tall, 'c' = crouch
 
+float hips[4]  = {90, 90, 90, 90};   // CURRENT servo angles
+float knees[4] = {45, 45, 45, 45};
 
-float hips[4] = {0, 0, 0, 0};
-float knees[4] = {0, 0, 0, 0};
+void setLeg(int idx, float hipTarget, float kneeTarget, float dt, float maxSpeed = 60) {
+    float maxStep = maxSpeed * dt;
+    // constantly these have to move to the assigned goal, but it cant driceltly moove all the angles at once , so we project them into the smallest maximum posisble step
+    hips[idx]  += constrain(hipTarget  - hips[idx],  -maxStep, maxStep);
+    knees[idx] += constrain(kneeTarget - knees[idx], -maxStep, maxStep);
 
+    //convert to angles
+    hips[idx]  = constrain(hips[idx],  0, 180);
+    knees[idx] = constrain(knees[idx], 0, 180);
 
-void setLeg(int idx, float armOffset, float elbowOffset){
-    //set servo to that posootion 
-
-
-    if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
-
-    
-    myServos[idx].write(pos);
-    // Calculate the next position
-    pos += step;
-    if (pos >= 180 || pos <= 0) {
-      step = -step;
-    }
-  }
+    myServos[2 * idx].write((int)hips[idx]);
+    myServos[2 * idx + 1].write((int)knees[idx]);
 }
 
 void readSerial() {
@@ -114,7 +107,6 @@ void dogcrouch(float dt, float current_pos_hips[4], float current_pos_knee[4] ){
     }
 }
 
-
 void dogwalk(float dt){  
     phase += dt * GAIT_SPEED * 2 * PI; // Update phase based on gait speed
     float legphase[4];
@@ -147,9 +139,6 @@ void dogwalk(float dt){
 
     //run the gait and balance code, and set the leg positions
 
-
-
-
 void setup(){
 
     Serial.begin(115200);
@@ -174,7 +163,6 @@ void setup(){
     // this is juust example code copied to initalse and setup the imu, the sesitivity values 
     
     lastTime = millis();
-
 
 }
 

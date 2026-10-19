@@ -28,7 +28,15 @@ float knees[4] = {45, 45, 45, 45};
 
 float phase = 0;
 
+
+float kneeCorr[4] = {0, 0, 0, 0};
+const float KP = 0.3;   // degrees of knee per degree of tilt
+
+
+
 void setLeg(int idx, float hipTarget, float kneeTarget, float dt, float maxSpeed = 60) {
+    kneeTarget += kneeCorr[idx];   // <-- balance offset
+
     float maxStep = maxSpeed * dt;
     // constantly these have to move to the assigned goal, but it cant driceltly moove all the angles at once , so we project them into the smallest maximum posisble step
     hips[idx]  += constrain(hipTarget  - hips[idx],  -maxStep, maxStep);
@@ -106,14 +114,16 @@ void dogwalk(float dt){
     //run the gait and balance code, and set the leg positions
 
 
-void balance_booty(int dt, float roll, float pitch){
-    
-    for(int i = 0; i < 4, i++){
-        
-    }
+// Leg order: 0 = FL, 1 = FR, 2 = BL, 3 = BR
+void balance_booty(float roll, float pitch) {
+    if (fabs(pitch) < 2) pitch = 0;   // deadband, stops twitching
+    if (fabs(roll)  < 2) roll  = 0;
 
+    kneeCorr[0] = constrain( KP * pitch + KP * roll, -15, 15);   // front left
+    kneeCorr[1] = constrain( KP * pitch - KP * roll, -15, 15);   // front right
+    kneeCorr[2] = constrain(-KP * pitch + KP * roll, -15, 15);   // back left
+    kneeCorr[3] = constrain(-KP * pitch - KP * roll, -15, 15);   // back right
 }
-
 
 
 void setup(){
@@ -165,7 +175,7 @@ void loop(){
         Serial.println(pitch);
 
         
-
+        balance_booty(roll, pitch);
 
 
         if (mode == 'w') {

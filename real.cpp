@@ -105,6 +105,17 @@ void dogwalk(float dt){
 }
     //run the gait and balance code, and set the leg positions
 
+
+void balance_booty(int dt, float roll, float pitch){
+    
+    for(int i = 0; i < 4, i++){
+        
+    }
+
+}
+
+
+
 void setup(){
 
     Serial.begin(115200);
@@ -152,6 +163,10 @@ void loop(){
         Serial.print(roll);
         Serial.print("  Pitch: ");
         Serial.println(pitch);
+
+        
+
+
 
         if (mode == 'w') {
             dogwalk(dt); 

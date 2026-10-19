@@ -10,9 +10,7 @@ float roll = 0.0;
 float pitch = 0.0;
 float yaw = 0.0;
 
-const int GAIT_SPEED,STEP_SWING,STEP_LIFT;
-GAIT_SPEED = 3;
-
+const int GAIT_SPEED = 3, STEP_SWING = 20, STEP_LIFT = 25;
 
 const int numServos = 8;
 Servo myServos[numServos];
@@ -27,6 +25,8 @@ char mode = 's'; // 'w' = walk, 's' = stop, 't' = tall, 'c' = crouch
 
 float hips[4]  = {90, 90, 90, 90};   // CURRENT servo angles
 float knees[4] = {45, 45, 45, 45};
+
+float phase = 0;
 
 void setLeg(int idx, float hipTarget, float kneeTarget, float dt, float maxSpeed = 60) {
     float maxStep = maxSpeed * dt;
@@ -53,13 +53,12 @@ void readSerial() {
     }
 }
 
-
 void getIMU(float dt){
     //initialsie the imu, wake it up, read data from it, calcualte the yaw and pitch from the data dn return it
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
-
+    //maths copied from wikipedia
     roll = atan2(a.acceleration.y, a.acceleration.z) * 180 / PI;
     pitch = atan2(-a.acceleration.x, sqrt(a.acceleration.y * a.acceleration.y + a.acceleration.z * a.acceleration.z)) * 180 / PI;
     
@@ -72,38 +71,15 @@ void getIMU(float dt){
 
 }
 
-void dogtall(float dt, float current_pos_hips[4], float current_pos_knee[4]  ){
+void dogtall(float dt) {
     for (int i = 0; i < 4; i++) {
-        float hipDifference = -current_pos_hips[i];
-        float kneeDifference = -30 - current_pos_knee[i];
-
-        current_pos_hips[i] =0;
-
-        current_pos_knee[i] =0;
-
-        setLeg(i, current_pos_hips[i], current_pos_knee[i]);
+        setLeg(i, 90, 60, dt);   // hip neutral, knee extended (tall)
     }
 }
 
-void dogcrouch(float dt, float current_pos_hips[4], float current_pos_knee[4] ){
-    const float maxChange = 60.0f * dt;
+void dogcrouch(float dt) {
     for (int i = 0; i < 4; i++) {
-        float hipDifference = -current_pos_hips[i];
-        float kneeDifference = 35.0f - current_pos_knee[i];
-
-        if (fabs(hipDifference) > maxChange) {
-            current_pos_hips[i] += (hipDifference > 0 ? maxChange : -maxChange);
-        } else {
-            current_pos_hips[i] = 0.0f;
-        }
-
-        if (fabs(kneeDifference) > maxChange) {
-            current_pos_knee[i] += (kneeDifference > 0 ? maxChange : -maxChange);
-        } else {
-            current_pos_knee[i] = 35.0f;
-        }
-
-        setLeg(i, current_pos_hips[i], current_pos_knee[i]);
+        setLeg(i, 90, 35, dt);   // hip neutral, knee bent (crouch)
     }
 }
 
@@ -114,45 +90,33 @@ void dogwalk(float dt){
     legphase[1] = phase + PI/2; // Front Right
     legphase[2] = phase + PI; // Back Left
     legphase[3] = phase + 3*PI/2; // Bck Right
-    
-
 
     //we will make it output range (-1 , 0 ,1 )
 
     for( int i = 0; i < 4; i ++){
-        hips[i] = sin(legphase[i]) * STEP_SWING;
-
-        if (cos(legPhase[i]) > 0) {
-            knees[i] = -(cos(legphase[i]) * STEP_LIFT); 
+        float hipTarget  = 90 + sin(legphase[i]) * STEP_SWING;
+        float kneeTarget = 45;
+        if (cos(legphase[i]) > 0) {
+            kneeTarget = -(cos(legphase[i]) * STEP_LIFT); 
             // if leg in swing phase , we lift the knee so it doenst hit grnd
-        } else {
-            //gorundtouching phase
-            knees[i] = 0.0; 
-
         }
+        setLeg(i, hipTarget, kneeTarget, dt);
     }
-
-    for (int i = 0; i < 4; i++) {
-        setLeg(i, hOut[i], kOut[i]); 
-    }
-  }
-
+}
     //run the gait and balance code, and set the leg positions
 
 void setup(){
 
     Serial.begin(115200);
     Wire.begin(21,22);// to begin the i2c communcition between on the esp
-    mpu.begin()
+    mpu.begin();
 
-    
     //setup the serial, setup imu, setup servos, and set the initial leg positions
     ESP32PWM::allocateTimer(0);
     ESP32PWM::allocateTimer(1);
     ESP32PWM::allocateTimer(2);
     ESP32PWM::allocateTimer(3);
 
-    // A "for loop" that counts from 0 to 7 to set up all 8 servos instantly
     for (int i = 0; i < numServos; i++) {
         myServos[i].setPeriodHertz(50);
         myServos[i].attach(servoPins[i], 500, 2400);
@@ -162,31 +126,42 @@ void setup(){
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
     // this is juust example code copied to initalse and setup the imu, the sesitivity values 
     
-    lastTime = millis();
+    //setting servo to neutral posotion
+    for (int i = 0; i < 4; i++){
+       myServos[2*i].write(90);
+       myServos[2*i+1].write(45);
+   }
+
 
 }
-
-
 void loop(){
     readSerial();
 
     unsigned long currentMillis = millis();
     
+    
+
+
     if (currentMillis - previousMillis >= interval) {
         float dt = (currentMillis - previousMillis) / 1000.0;
         previousMillis = currentMillis;
 
         getIMU(dt);
 
+        Serial.print("Roll: ");
+        Serial.print(roll);
+        Serial.print("  Pitch: ");
+        Serial.println(pitch);
+
         if (mode == 'w') {
-            dogwalk(dt, 2); 
+            dogwalk(dt); 
         } else if (mode == 'c') {
-            dogcrouch(dt,hips,knees);
+            dogcrouch(dt);
         } else if (mode == 't') {
-            dogtall(dt,hips,knees);
+            dogtall(dt);
         } else {
             for(int i= 0; i<4; i++){
-                setLeg(i,90,45);
+                setLeg(i,90,45,dt);
             }
         }
     }

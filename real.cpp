@@ -30,11 +30,11 @@ float phase = 0;
 
 
 float kneeCorr[4] = {0, 0, 0, 0};
-const float KP = 0.3;   // degrees of knee per degree of tilt
+const float KP = 1.5;   // degrees of knee per degree of tilt
 
 
 
-void setLeg(int idx, float hipTarget, float kneeTarget, float dt, float maxSpeed = 60) {
+void setLeg(int idx, float hipTarget, float kneeTarget, float dt, float maxSpeed = 360) {
     kneeTarget += kneeCorr[idx];   // <-- balance offset
 
     float maxStep = maxSpeed * dt;
@@ -105,7 +105,7 @@ void dogwalk(float dt){
         float hipTarget  = 90 + sin(legphase[i]) * STEP_SWING;
         float kneeTarget = 45;
         if (cos(legphase[i]) > 0) {
-            kneeTarget = -(cos(legphase[i]) * STEP_LIFT); 
+            kneeTarget = 45 - (cos(legphase[i]) * STEP_LIFT);
             // if leg in swing phase , we lift the knee so it doenst hit grnd
         }
         setLeg(i, hipTarget, kneeTarget, dt);
@@ -175,7 +175,7 @@ void loop(){
         Serial.println(pitch);
 
         
-        balance_booty(roll, pitch);
+        balance_booty(-roll, pitch);
 
 
         if (mode == 'w') {
